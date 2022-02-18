@@ -198,7 +198,6 @@ const addfile = async (folderName) => {
           Bucket: folderBucketName
         })
     );
-    console.log({addfile: data});
     const file = files[0];
     const fileName = file.name;
     const fileKey = folderfilesKey + fileName;
@@ -209,6 +208,7 @@ const addfile = async (folderName) => {
     };
     try {
       const data = await s3.send(new PutObjectCommand(uploadParams));
+      console.log({addfile: data});
       alert("Successfully uploaded file.");
       viewfolder(folderName);
     } catch (err) {
