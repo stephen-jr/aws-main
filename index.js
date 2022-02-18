@@ -3,9 +3,6 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   ListObjectsCommand } from "@aws-sdk/client-s3";
-import { arguments } from "commander";
-
-const args = arguments;
 
 
 function getHtml(template) {
@@ -34,7 +31,7 @@ const listfolders = async () => {
     const data = await s3.send(
         new ListObjectsCommand({ Delimiter: "/", Bucket: folderBucketName })
     );
-    console.log({[args.callee.name] : data });
+    console.log({listfolders: data });
     if (data.CommonPrefixes === undefined) {
       const htmlTemplate = [
         "<p>You don't have any folders. You need to create an folder.</p>",
@@ -63,7 +60,7 @@ const listfolders = async () => {
           ])
           : "<p>You do not have any folders. You need to create an folder.";
       const htmlTemplate = [
-        "<h2>folders</h2>",
+        "<h2>Folders</h2>",
         message,
         "<ul>",
         getHtml(folders),
@@ -97,7 +94,7 @@ const createfolder = async (folderName) => {
     const key = folderKey + "/";
     const params = { Bucket: folderBucketName, Key: key };
     const data = await s3.send(new PutObjectCommand(params));
-    console.log({[args.callee.name] : data });
+    console.log({createFolder: data});
     alert("Successfully created folder.");
     viewfolder(folderName);
   } catch (err) {
@@ -120,7 +117,7 @@ const viewfolder = async (folderName) => {
           Bucket: folderBucketName,
         })
     );
-    console.log({[args.callee.name] : data });
+    console.log({viewfolder: data});
     if (data.Contents.length === 1) {
       var htmlTemplate = [
         "<p>You don't have any files in this folder. You need to add files.</p>",
@@ -134,8 +131,7 @@ const viewfolder = async (folderName) => {
       ];
       document.getElementById("app").innerHTML = getHtml(htmlTemplate);
     } else {
-      console.log({[args.callee.name] : data });
-      const href = "https://"+ folderBucketName + "." + REGION + "linodeobjects.com";
+      const href = "https://"+ folderBucketName + "." + REGION + ".linodeobjects.com";
       const bucketUrl = href + "/";
       const files = data.Contents.map(function (file) {
         const fileKey = file.Key;
@@ -166,7 +162,7 @@ const viewfolder = async (folderName) => {
           : "<p>You don't have any files in this folder. You need to add files.</p>";
       const htmlTemplate = [
         "<h2>",
-        "folder: " + folderName,
+        "Folder: " + folderName,
         "</h2>",
         message,
         "<div>",
@@ -202,7 +198,7 @@ const addfile = async (folderName) => {
           Bucket: folderBucketName
         })
     );
-    console.log({[args.callee.name] : data });
+    console.log({addfile: data});
     const file = files[0];
     const fileName = file.name;
     const fileKey = folderfilesKey + fileName;
@@ -234,7 +230,7 @@ const deletefile = async (folderName, fileKey) => {
     console.log(fileKey);
     const params = { Key: fileKey, Bucket: folderBucketName };
     const data = await s3.send(new DeleteObjectCommand(params));
-    console.log({[args.callee.name] : data });
+    console.log({viewfile: data});
     console.log("Successfully deleted file.");
     viewfolder(folderName);
   } catch (err) {
@@ -261,7 +257,7 @@ const deletefolder = async (folderName) => {
         Quiet: true,
       };
       const data = await s3.send(new DeleteObjectsCommand(params));
-      console.log({[args.callee.name] : data });
+      console.log({deletefolder: data});
       listfolders();
       return alert("Successfully deleted folder.");
     } catch (err) {
