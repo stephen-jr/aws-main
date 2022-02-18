@@ -3,6 +3,9 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   ListObjectsCommand } from "@aws-sdk/client-s3";
+import { arguments } from "commander";
+
+const args = arguments;
 
 
 function getHtml(template) {
@@ -23,194 +26,197 @@ let s3 = new S3Client({
     region: REGION
 });
 
-let albumBucketName = "ferma-edms";
+let folderBucketName = "ferma-edms";
 
-// List the photo albums that exist in the bucket
-const listAlbums = async () => {
+// List the file folders that exist in the bucket
+const listfolders = async () => {
   try {
     const data = await s3.send(
-        new ListObjectsCommand({ Delimiter: "/", Bucket: albumBucketName })
+        new ListObjectsCommand({ Delimiter: "/", Bucket: folderBucketName })
     );
-
+    console.log({[args.callee.name] : data });
     if (data.CommonPrefixes === undefined) {
       const htmlTemplate = [
-        "<p>You don't have any albums. You need to create an album.</p>",
-        "<button onclick=\"createAlbum(prompt('Enter album name:'))\">",
-        "Create new album",
+        "<p>You don't have any folders. You need to create an folder.</p>",
+        "<button onclick=\"createfolder(prompt('Enter folder name:'))\">",
+        "Create new folder",
         "</button>",
       ];
       document.getElementById("app").innerHTML = htmlTemplate;
     } else {
-      var albums = data.CommonPrefixes.map(function (commonPrefix) {
+      var folders = data.CommonPrefixes.map(function (commonPrefix) {
         var prefix = commonPrefix.Prefix;
-        var albumName = decodeURIComponent(prefix.replace("/", ""));
+        var folderName = decodeURIComponent(prefix.replace("/", ""));
         return getHtml([
           "<li>",
-          "<span onclick=\"deleteAlbum('" + albumName + "')\">X</span>",
-          "<span onclick=\"viewAlbum('" + albumName + "')\">",
-          albumName,
+          "<span onclick=\"deletefolder('" + folderName + "')\">X</span>",
+          "<span onclick=\"viewfolder('" + folderName + "')\">",
+          folderName,
           "</span>",
           "</li>",
         ]);
       });
-      var message = albums.length
+      var message = folders.length
           ? getHtml([
-            "<p>Click an album name to view it.</p>",
-            "<p>Click the X to delete the album.</p>",
+            "<p>Click an folder name to view it.</p>",
+            "<p>Click the X to delete the folder.</p>",
           ])
-          : "<p>You do not have any albums. You need to create an album.";
+          : "<p>You do not have any folders. You need to create an folder.";
       const htmlTemplate = [
-        "<h2>Albums</h2>",
+        "<h2>folders</h2>",
         message,
         "<ul>",
-        getHtml(albums),
+        getHtml(folders),
         "</ul>",
-        "<button onclick=\"createAlbum(prompt('Enter Album Name:'))\">",
-        "Create new Album",
+        "<button onclick=\"createfolder(prompt('Enter folder Name:'))\">",
+        "Create new folder",
         "</button>",
       ];
       document.getElementById("app").innerHTML = getHtml(htmlTemplate);
     }
   } catch (err) {
-    return alert("There was an error listing your albums: " + err.message);
+    return alert("There was an error listing your folders: " + err.message);
   }
 };
 
-// Make listAlbums function available to the browser
-window.listAlbums = listAlbums;
+// Make listfolders function available to the browser
+window.listfolders = listfolders;
 
 
-// Create an album in the bucket
-const createAlbum = async (albumName) => {
-  albumName = albumName.trim();
-  if (!albumName) {
-    return alert("Album names must contain at least one non-space character.");
+// Create an folder in the bucket
+const createfolder = async (folderName) => {
+  folderName = folderName.trim();
+  if (!folderName) {
+    return alert("folder names must contain at least one non-space character.");
   }
-  if (albumName.indexOf("/") !== -1) {
-    return alert("Album names cannot contain slashes.");
+  if (folderName.indexOf("/") !== -1) {
+    return alert("folder names cannot contain slashes.");
   }
-  var albumKey = encodeURIComponent(albumName);
+  var folderKey = encodeURIComponent(folderName);
   try {
-    const key = albumKey + "/";
-    const params = { Bucket: albumBucketName, Key: key };
+    const key = folderKey + "/";
+    const params = { Bucket: folderBucketName, Key: key };
     const data = await s3.send(new PutObjectCommand(params));
-    alert("Successfully created album.");
-    viewAlbum(albumName);
+    console.log({[args.callee.name] : data });
+    alert("Successfully created folder.");
+    viewfolder(folderName);
   } catch (err) {
-    return alert("There was an error creating your album: " + err.message);
+    return alert("There was an error creating your folder: " + err.message);
   }
 };
 
-// Make createAlbum function available to the browser
-window.createAlbum = createAlbum;
+// Make createfolder function available to the browser
+window.createfolder = createfolder;
 
 
-// View the contents of an album
+// View the contents of an folder
 
-const viewAlbum = async (albumName) => {
-  const albumPhotosKey = encodeURIComponent(albumName) + "/";
+const viewfolder = async (folderName) => {
+  const folderfilesKey = encodeURIComponent(folderName) + "/";
   try {
     const data = await s3.send(
         new ListObjectsCommand({
-          Prefix: albumPhotosKey,
-          Bucket: albumBucketName,
+          Prefix: folderfilesKey,
+          Bucket: folderBucketName,
         })
     );
+    console.log({[args.callee.name] : data });
     if (data.Contents.length === 1) {
       var htmlTemplate = [
-        "<p>You don't have any photos in this album. You need to add photos.</p>",
-        '<input id="photoupload" type="file" accept="image/*">',
-        '<button id="addphoto" onclick="addPhoto(\'' + albumName + "')\">",
-        "Add photo",
+        "<p>You don't have any files in this folder. You need to add files.</p>",
+        '<input id="fileupload" type="file" accept="*">',
+        '<button id="addfile" onclick="addfile(\'' + folderName + "')\">",
+        "Add file",
         "</button>",
-        '<button onclick="listAlbums()">',
-        "Back to albums",
+        '<button onclick="listfolders()">',
+        "Back to folders",
         "</button>",
       ];
       document.getElementById("app").innerHTML = getHtml(htmlTemplate);
     } else {
-      console.log(data);
-      const href = "https://s3." + REGION + ".amazonaws.com/";
-      const bucketUrl = href + albumBucketName + "/";
-      const photos = data.Contents.map(function (photo) {
-        const photoKey = photo.Key;
-        console.log(photo.Key);
-        const photoUrl = bucketUrl + encodeURIComponent(photoKey);
+      console.log({[args.callee.name] : data });
+      const href = "https://"+ folderBucketName + "." + REGION + "linodeobjects.com";
+      const bucketUrl = href + "/";
+      const files = data.Contents.map(function (file) {
+        const fileKey = file.Key;
+        console.log(file.Key);
+        const fileUrl = bucketUrl + encodeURIComponent(fileKey);
         return getHtml([
           "<span>",
           "<div>",
-          '<img style="width:128px;height:128px;" src="' + photoUrl + '"/>',
+          '<img style="width:128px;height:128px;" src="' + fileUrl + '"/>',
           "</div>",
           "<div>",
-          "<span onclick=\"deletePhoto('" +
-          albumName +
+          "<span onclick=\"deletefile('" +
+          folderName +
           "','" +
-          photoKey +
+          fileKey +
           "')\">",
           "X",
           "</span>",
           "<span>",
-          photoKey.replace(albumPhotosKey, ""),
+          fileKey.replace(folderfilesKey, ""),
           "</span>",
           "</div>",
           "</span>",
         ]);
       });
-      var message = photos.length
-          ? "<p>Click the X to delete the photo.</p>"
-          : "<p>You don't have any photos in this album. You need to add photos.</p>";
+      var message = files.length
+          ? "<p>Click the X to delete the file.</p>"
+          : "<p>You don't have any files in this folder. You need to add files.</p>";
       const htmlTemplate = [
         "<h2>",
-        "Album: " + albumName,
+        "folder: " + folderName,
         "</h2>",
         message,
         "<div>",
-        getHtml(photos),
+        getHtml(files),
         "</div>",
-        '<input id="photoupload" type="file" accept="image/*">',
-        '<button id="addphoto" onclick="addPhoto(\'' + albumName + "')\">",
-        "Add photo",
+        '<input id="fileupload" type="file" accept="image/*">',
+        '<button id="addfile" onclick="addfile(\'' + folderName + "')\">",
+        "Add file",
         "</button>",
-        '<button onclick="listAlbums()">',
-        "Back to albums",
+        '<button onclick="listfolders()">',
+        "Back to folders",
         "</button>",
       ];
       document.getElementById("app").innerHTML = getHtml(htmlTemplate);
       document.getElementsByTagName("img")[0].remove();
     }
   } catch (err) {
-    return alert("There was an error viewing your album: " + err.message);
+    return alert("There was an error viewing your folder: " + err.message);
   }
 };
-// Make viewAlbum function available to the browser
-window.viewAlbum = viewAlbum;
+// Make viewfolder function available to the browser
+window.viewfolder = viewfolder;
 
 
-// Add a photo to an album
-const addPhoto = async (albumName) => {
-  const files = document.getElementById("photoupload").files;
+// Add a file to an folder
+const addfile = async (folderName) => {
+  const files = document.getElementById("fileupload").files;
   try {
-    const albumPhotosKey = encodeURIComponent(albumName) + "/";
+    const folderfilesKey = encodeURIComponent(folderName) + "/";
     const data = await s3.send(
         new ListObjectsCommand({
-          Prefix: albumPhotosKey,
-          Bucket: albumBucketName
+          Prefix: folderfilesKey,
+          Bucket: folderBucketName
         })
     );
+    console.log({[args.callee.name] : data });
     const file = files[0];
     const fileName = file.name;
-    const photoKey = albumPhotosKey + fileName;
+    const fileKey = folderfilesKey + fileName;
     const uploadParams = {
-      Bucket: albumBucketName,
-      Key: photoKey,
+      Bucket: folderBucketName,
+      Key: fileKey,
       Body: file
     };
     try {
       const data = await s3.send(new PutObjectCommand(uploadParams));
-      alert("Successfully uploaded photo.");
-      viewAlbum(albumName);
+      alert("Successfully uploaded file.");
+      viewfolder(folderName);
     } catch (err) {
-      return alert("There was an error uploading your photo: ", err.message);
+      return alert("There was an error uploading your file: ", err.message);
     }
   } catch (err) {
     if (!files.length) {
@@ -218,51 +224,53 @@ const addPhoto = async (albumName) => {
     }
   }
 };
-// Make addPhoto function available to the browser
-window.addPhoto = addPhoto;
+// Make addfile function available to the browser
+window.addfile = addfile;
 
 
-// Delete a photo from an album
-const deletePhoto = async (albumName, photoKey) => {
+// Delete a file from an folder
+const deletefile = async (folderName, fileKey) => {
   try {
-    console.log(photoKey);
-    const params = { Key: photoKey, Bucket: albumBucketName };
+    console.log(fileKey);
+    const params = { Key: fileKey, Bucket: folderBucketName };
     const data = await s3.send(new DeleteObjectCommand(params));
-    console.log("Successfully deleted photo.");
-    viewAlbum(albumName);
+    console.log({[args.callee.name] : data });
+    console.log("Successfully deleted file.");
+    viewfolder(folderName);
   } catch (err) {
-    return alert("There was an error deleting your photo: ", err.message);
+    return alert("There was an error deleting your file: ", err.message);
   }
 };
-// Make deletePhoto function available to the browser
-window.deletePhoto = deletePhoto;
+// Make deletefile function available to the browser
+window.deletefile = deletefile;
 
 
-// Delete an album from the bucket
-const deleteAlbum = async (albumName) => {
-  const albumKey = encodeURIComponent(albumName) + "/";
+// Delete an folder from the bucket
+const deletefolder = async (folderName) => {
+  const folderKey = encodeURIComponent(folderName) + "/";
   try {
-    const params = { Bucket: albumBucketName, Prefix: albumKey };
+    const params = { Bucket: folderBucketName, Prefix: folderKey };
     const data = await s3.send(new ListObjectsCommand(params));
     const objects = data.Contents.map(function (object) {
       return { Key: object.Key };
     });
     try {
       const params = {
-        Bucket: albumBucketName,
+        Bucket: folderBucketName,
         Delete: { Objects: objects },
         Quiet: true,
       };
       const data = await s3.send(new DeleteObjectsCommand(params));
-      listAlbums();
-      return alert("Successfully deleted album.");
+      console.log({[args.callee.name] : data });
+      listfolders();
+      return alert("Successfully deleted folder.");
     } catch (err) {
-      return alert("There was an error deleting your album: ", err.message);
+      return alert("There was an error deleting your folder: ", err.message);
     }
   } catch (err) {
-    return alert("There was an error deleting your album1: ", err.message);
+    return alert("There was an error deleting your folder1: ", err.message);
   }
 };
-// Make deleteAlbum function available to the browser
-window.deleteAlbum = deleteAlbum;
+// Make deletefolder function available to the browser
+window.deletefolder = deletefolder;
 
