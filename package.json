@@ -3,7 +3,7 @@
     "build": "webpack"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.350.0"
+    "@aws-sdk/client-s3": "^3.621.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.20",
